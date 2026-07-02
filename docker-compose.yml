@@ -1,0 +1,24 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: codelessai-smart-image-editor
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: production
+      SECRET_KEY: change-me-in-production
+      ACCESS_TOKEN_TTL_MINUTES: "480"
+      MAX_UPLOAD_MB: "20"
+      MAX_IMAGE_DIMENSION: "2048"
+      MAX_CONCURRENT_JOBS: "2"
+    volumes:
+      - codelessai_storage:/app/storage
+      - codelessai_logs:/app/logs
+    restart: unless-stopped
+
+volumes:
+  codelessai_storage:
+  codelessai_logs:
+

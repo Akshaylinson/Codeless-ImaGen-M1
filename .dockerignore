@@ -1,0 +1,16 @@
+.git
+.agents
+.codex
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.mypy_cache
+.ruff_cache
+logs
+storage
+node_modules
+dist
+build
+
