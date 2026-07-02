@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gallery - CodelessAI Smart Image Editor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/assets/css/styles.css">
+  <script type="module" src="/assets/js/pages/gallery.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="/"><span class="brand-mark"></span><span>CodelessAI Smart Image Editor</span></a>
+      <nav class="nav">
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/editor.html">Editor</a>
+        <a href="/admin.html">Admin</a>
+      </nav>
+    </header>
+    <section class="panel section">
+      <h2>Gallery</h2>
+      <div class="field" style="max-width:340px;margin-bottom:16px;">
+        <label for="search">Search history</label>
+        <input id="search" placeholder="remove, replace, text..." />
+      </div>
+      <div id="gallery" class="gallery"></div>
+    </section>
+  </div>
+</body>
+</html>
+
