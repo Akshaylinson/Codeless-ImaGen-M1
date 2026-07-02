@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic_settings.sources import EnvSettingsSource, PydanticBaseSettingsSource
+from pydantic_settings.sources import DotEnvSettingsSource, EnvSettingsSource, PydanticBaseSettingsSource
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
@@ -14,14 +14,30 @@ BACKEND_DIR = ROOT_DIR / "backend"
 FRONTEND_DIR = ROOT_DIR / "frontend"
 STORAGE_DIR = ROOT_DIR / "storage"
 LOG_DIR = ROOT_DIR / "logs"
+MODELS_DIR = ROOT_DIR / "models"
 
 
-class CsvAwareEnvSettingsSource(EnvSettingsSource):
-    def prepare_field_value(self, field_name: str, field: Any, value: Any, value_is_complex: bool) -> Any:
-        if field_name == "allowed_origins" and isinstance(value, str):
-            if value.strip().startswith("["):
-                return json.loads(value)
+class _CsvOriginsMixin:
+    def _parse_allowed_origins(self, value: Any) -> Any:
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped.startswith("["):
+                return json.loads(stripped)
             return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+
+class CsvAwareEnvSettingsSource(_CsvOriginsMixin, EnvSettingsSource):
+    def prepare_field_value(self, field_name: str, field: Any, value: Any, value_is_complex: bool) -> Any:
+        if field_name == "allowed_origins":
+            return self._parse_allowed_origins(value)
+        return super().prepare_field_value(field_name, field, value, value_is_complex)
+
+
+class CsvAwareDotEnvSettingsSource(_CsvOriginsMixin, DotEnvSettingsSource):
+    def prepare_field_value(self, field_name: str, field: Any, value: Any, value_is_complex: bool) -> Any:
+        if field_name == "allowed_origins":
+            return self._parse_allowed_origins(value)
         return super().prepare_field_value(field_name, field, value, value_is_complex)
 
 
@@ -43,6 +59,14 @@ class Settings(BaseSettings):
     max_upload_mb: int = Field(default=20, alias="MAX_UPLOAD_MB")
     max_image_dimension: int = Field(default=2048, alias="MAX_IMAGE_DIMENSION")
     max_concurrent_jobs: int = Field(default=2, alias="MAX_CONCURRENT_JOBS")
+    models_dir: Path = Field(default=MODELS_DIR, alias="MODELS_DIR")
+    intent_model_path: Path = Field(default=MODELS_DIR / "Qwen2.5-3B-Instruct-GGUF.gguf", alias="INTENT_MODEL_PATH")
+    intent_model_n_ctx: int = Field(default=4096, alias="INTENT_MODEL_N_CTX")
+    intent_model_n_threads: int = Field(default=4, alias="INTENT_MODEL_N_THREADS")
+    intent_model_n_gpu_layers: int = Field(default=0, alias="INTENT_MODEL_N_GPU_LAYERS")
+    intent_model_max_tokens: int = Field(default=256, alias="INTENT_MODEL_MAX_TOKENS")
+    intent_model_temperature: float = Field(default=0.0, alias="INTENT_MODEL_TEMPERATURE")
+    intent_model_top_p: float = Field(default=0.95, alias="INTENT_MODEL_TOP_P")
     database_path: Path = Field(default=STORAGE_DIR / "codelessai.sqlite3", alias="DATABASE_PATH")
     uploads_dir: Path = Field(default=STORAGE_DIR / "uploads", alias="UPLOADS_DIR")
     generated_dir: Path = Field(default=STORAGE_DIR / "generated", alias="GENERATED_DIR")
@@ -67,7 +91,7 @@ class Settings(BaseSettings):
         return (
             init_settings,
             CsvAwareEnvSettingsSource(settings_cls),
-            dotenv_settings,
+            CsvAwareDotEnvSettingsSource(settings_cls),
             file_secret_settings,
         )
 
@@ -101,6 +125,7 @@ settings = Settings()
 
 def ensure_directories() -> None:
     for directory in [
+        settings.models_dir,
         settings.uploads_dir,
         settings.generated_dir,
         settings.masks_dir,

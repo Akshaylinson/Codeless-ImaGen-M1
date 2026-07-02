@@ -21,9 +21,18 @@
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB}
       MAX_IMAGE_DIMENSION: ${MAX_IMAGE_DIMENSION}
       MAX_CONCURRENT_JOBS: ${MAX_CONCURRENT_JOBS}
+      MODELS_DIR: ${MODELS_DIR}
+      INTENT_MODEL_PATH: ${INTENT_MODEL_PATH}
+      INTENT_MODEL_N_CTX: ${INTENT_MODEL_N_CTX}
+      INTENT_MODEL_N_THREADS: ${INTENT_MODEL_N_THREADS}
+      INTENT_MODEL_N_GPU_LAYERS: ${INTENT_MODEL_N_GPU_LAYERS}
+      INTENT_MODEL_MAX_TOKENS: ${INTENT_MODEL_MAX_TOKENS}
+      INTENT_MODEL_TEMPERATURE: ${INTENT_MODEL_TEMPERATURE}
+      INTENT_MODEL_TOP_P: ${INTENT_MODEL_TOP_P}
     volumes:
       - codelessai_storage:/app/storage
       - codelessai_logs:/app/logs
+      - ./models:/app/models
     restart: unless-stopped
 
 volumes:
