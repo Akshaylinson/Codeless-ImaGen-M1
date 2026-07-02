@@ -1,8 +1,12 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
-from dataclasses import dataclass, field
+import json
 from pathlib import Path
-import os
+from typing import Any
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings.sources import EnvSettingsSource, PydanticBaseSettingsSource
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
@@ -12,27 +16,84 @@ STORAGE_DIR = ROOT_DIR / "storage"
 LOG_DIR = ROOT_DIR / "logs"
 
 
-@dataclass(slots=True)
-class Settings:
-    app_name: str = "CodelessAI Smart Image Editor"
-    environment: str = os.getenv("APP_ENV", "development")
-    secret_key: str = os.getenv("SECRET_KEY", "change-me-in-production")
-    access_token_ttl_minutes: int = int(os.getenv("ACCESS_TOKEN_TTL_MINUTES", "480"))
-    max_upload_mb: int = int(os.getenv("MAX_UPLOAD_MB", "20"))
-    max_image_dimension: int = int(os.getenv("MAX_IMAGE_DIMENSION", "2048"))
-    max_concurrent_jobs: int = int(os.getenv("MAX_CONCURRENT_JOBS", "2"))
-    database_path: Path = ROOT_DIR / "storage" / "codelessai.sqlite3"
-    uploads_dir: Path = STORAGE_DIR / "uploads"
-    generated_dir: Path = STORAGE_DIR / "generated"
-    masks_dir: Path = STORAGE_DIR / "masks"
-    thumbnails_dir: Path = STORAGE_DIR / "thumbnails"
-    temp_dir: Path = STORAGE_DIR / "temp"
-    logs_dir: Path = LOG_DIR
-    frontend_dir: Path = FRONTEND_DIR
-    allowed_origins: list[str] = field(default_factory=lambda: ["*"])
-    rate_limit_window_seconds: int = 60
-    rate_limit_max_requests: int = 120
-    cors_allow_credentials: bool = True
+class CsvAwareEnvSettingsSource(EnvSettingsSource):
+    def prepare_field_value(self, field_name: str, field: Any, value: Any, value_is_complex: bool) -> Any:
+        if field_name == "allowed_origins" and isinstance(value, str):
+            if value.strip().startswith("["):
+                return json.loads(value)
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return super().prepare_field_value(field_name, field, value, value_is_complex)
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(case_sensitive=False, extra="ignore")
+
+    app_name: str = Field(default="CodelessAI Smart Image Editor", alias="APP_NAME")
+    app_env: str = Field(default="development", alias="APP_ENV")
+    host: str = Field(default="0.0.0.0", alias="HOST")
+    port: int = Field(default=8000, alias="PORT")
+    public_base_url: str = Field(default="", alias="PUBLIC_BASE_URL")
+    api_prefix: str = Field(default="/api", alias="API_PREFIX")
+    frontend_url: str = Field(default="", alias="FRONTEND_URL")
+    static_url: str = Field(default="/static", alias="STATIC_URL")
+    allowed_origins: list[str] = Field(default_factory=list, alias="ALLOWED_ORIGINS")
+    enable_https: bool = Field(default=False, alias="ENABLE_HTTPS")
+    secret_key: str = Field(default="change-me-in-production", alias="SECRET_KEY")
+    access_token_ttl_minutes: int = Field(default=480, alias="ACCESS_TOKEN_TTL_MINUTES")
+    max_upload_mb: int = Field(default=20, alias="MAX_UPLOAD_MB")
+    max_image_dimension: int = Field(default=2048, alias="MAX_IMAGE_DIMENSION")
+    max_concurrent_jobs: int = Field(default=2, alias="MAX_CONCURRENT_JOBS")
+    database_path: Path = Field(default=STORAGE_DIR / "codelessai.sqlite3", alias="DATABASE_PATH")
+    uploads_dir: Path = Field(default=STORAGE_DIR / "uploads", alias="UPLOADS_DIR")
+    generated_dir: Path = Field(default=STORAGE_DIR / "generated", alias="GENERATED_DIR")
+    masks_dir: Path = Field(default=STORAGE_DIR / "masks", alias="MASKS_DIR")
+    thumbnails_dir: Path = Field(default=STORAGE_DIR / "thumbnails", alias="THUMBNAILS_DIR")
+    temp_dir: Path = Field(default=STORAGE_DIR / "temp", alias="TEMP_DIR")
+    logs_dir: Path = Field(default=LOG_DIR, alias="LOGS_DIR")
+    frontend_dir: Path = Field(default=FRONTEND_DIR, alias="FRONTEND_DIR")
+    rate_limit_window_seconds: int = Field(default=60, alias="RATE_LIMIT_WINDOW_SECONDS")
+    rate_limit_max_requests: int = Field(default=120, alias="RATE_LIMIT_MAX_REQUESTS")
+    cors_allow_credentials: bool = Field(default=True, alias="CORS_ALLOW_CREDENTIALS")
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,
+            CsvAwareEnvSettingsSource(settings_cls),
+            dotenv_settings,
+            file_secret_settings,
+        )
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, value: object) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        return []
+
+    @field_validator("api_prefix", "static_url", mode="before")
+    @classmethod
+    def normalize_slash_prefix(cls, value: object) -> str:
+        text = str(value or "").strip()
+        if not text.startswith("/"):
+            text = "/" + text
+        return text.rstrip("/") or "/"
+
+    @field_validator("public_base_url", "frontend_url", mode="before")
+    @classmethod
+    def trim_trailing_slash(cls, value: object) -> str:
+        return str(value or "").rstrip("/")
 
 
 settings = Settings()
@@ -49,3 +110,41 @@ def ensure_directories() -> None:
     ]:
         directory.mkdir(parents=True, exist_ok=True)
 
+
+def build_frontend_config() -> str:
+    payload = {
+        "APP_NAME": settings.app_name,
+        "APP_ENV": settings.app_env,
+        "BASE_URL": settings.frontend_url,
+        "API_BASE_URL": settings.public_base_url,
+        "STATIC_BASE_URL": settings.public_base_url,
+        "PUBLIC_BASE_URL": settings.public_base_url,
+        "FRONTEND_URL": settings.frontend_url,
+        "API_PREFIX": settings.api_prefix,
+        "STATIC_URL": settings.static_url,
+        "ENABLE_HTTPS": settings.enable_https,
+    }
+    payload_json = json.dumps(payload, ensure_ascii=False)
+    return f"""const raw = {payload_json};
+const defaultOrigin = window.location.origin;
+
+window.APP_CONFIG = {{
+  APP_NAME: raw.APP_NAME || 'CodelessAI Smart Image Editor',
+  APP_ENV: raw.APP_ENV || 'development',
+  BASE_URL: raw.BASE_URL || defaultOrigin,
+  API_BASE_URL: raw.API_BASE_URL ? `${{raw.API_BASE_URL}}${{raw.API_PREFIX || '/api'}}` : `${{defaultOrigin}}/api`,
+  STATIC_BASE_URL: raw.STATIC_BASE_URL ? `${{raw.STATIC_BASE_URL}}${{raw.STATIC_URL || '/static'}}` : `${{defaultOrigin}}/static`,
+  PUBLIC_BASE_URL: raw.PUBLIC_BASE_URL || defaultOrigin,
+  FRONTEND_URL: raw.FRONTEND_URL || defaultOrigin,
+  API_PREFIX: raw.API_PREFIX || '/api',
+  STATIC_URL: raw.STATIC_URL || '/static',
+  ENABLE_HTTPS: Boolean(raw.ENABLE_HTTPS),
+}};
+"""
+
+
+def write_frontend_config() -> Path:
+    ensure_directories()
+    config_path = settings.frontend_dir / "config.js"
+    config_path.write_text(build_frontend_config(), encoding="utf-8")
+    return config_path

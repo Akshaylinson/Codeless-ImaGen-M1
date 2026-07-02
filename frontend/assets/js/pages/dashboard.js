@@ -1,4 +1,4 @@
-import { apiFetch, clearToken, setToken } from '../utils/api.js';
+﻿import { apiFetch, clearToken, setToken } from '../services/api.js';
 import { $ } from '../utils/dom.js';
 import { toast } from '../components/toast.js';
 
@@ -7,7 +7,7 @@ async function login() {
   const password = $('#password').value;
   const status = $('#authStatus');
   try {
-    const result = await apiFetch('/api/auth/login', {
+    const result = await apiFetch('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
@@ -15,6 +15,7 @@ async function login() {
     status.textContent = `Logged in as ${result.username} (${result.role})`;
     await loadDashboard();
   } catch (error) {
+    clearToken();
     status.textContent = error.message;
     toast(error.message, 'error');
   }
@@ -23,8 +24,8 @@ async function login() {
 async function loadDashboard() {
   try {
     const [metrics, history] = await Promise.all([
-      apiFetch('/api/metrics'),
-      apiFetch('/api/history'),
+      apiFetch('/metrics'),
+      apiFetch('/history'),
     ]);
     $('#metrics').innerHTML = `
       <div class="stat"><strong>${metrics.cpu_usage_percent}%</strong><span class="muted">CPU usage</span></div>
@@ -49,4 +50,3 @@ window.addEventListener('DOMContentLoaded', () => {
   $('#loginBtn').addEventListener('click', login);
   loadDashboard();
 });
-

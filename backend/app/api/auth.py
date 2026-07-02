@@ -2,12 +2,13 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from ..core.config import settings
 from ..core.security import create_access_token, get_current_user
 from ..database.sqlite import db_session
 from ..schemas.auth import LoginRequest, LoginResponse, MeResponse
 
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix=f"{settings.api_prefix}/auth", tags=["auth"])
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -40,5 +41,3 @@ def me(current_user: dict = Depends(get_current_user)) -> MeResponse:
         username=str(current_user["username"]),
         role=str(current_user["role"]),
     )
-
-

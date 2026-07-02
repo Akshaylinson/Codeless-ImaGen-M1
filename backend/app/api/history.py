@@ -2,12 +2,13 @@
 
 from fastapi import APIRouter, Depends
 
+from ..core.config import settings
 from ..core.security import get_current_user
-from ..services.job_service import JobService
 from ..schemas.jobs import HistoryResponse, JobResponse
+from ..services.job_service import JobService
 
 
-router = APIRouter(prefix="/api/history", tags=["history"])
+router = APIRouter(prefix=f"{settings.api_prefix}/history", tags=["history"])
 job_service = JobService()
 
 
@@ -29,5 +30,3 @@ def history(current_user: dict = Depends(get_current_user)) -> HistoryResponse:
         for row in job_service.list_jobs()
     ]
     return HistoryResponse(jobs=jobs)
-
-

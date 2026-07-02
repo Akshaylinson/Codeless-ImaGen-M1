@@ -4,12 +4,13 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
+from ..core.config import settings
 from ..core.security import get_current_user
 from ..schemas.jobs import JobResponse
 from ..services.job_service import JobService
 
 
-router = APIRouter(prefix="/api/jobs", tags=["jobs"])
+router = APIRouter(prefix=f"{settings.api_prefix}/jobs", tags=["jobs"])
 job_service = JobService()
 
 

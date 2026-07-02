@@ -1,4 +1,4 @@
-import { apiFetch } from '../utils/api.js';
+﻿import { apiFetch } from '../services/api.js';
 import { $, formatDate } from '../utils/dom.js';
 import { createUploadZone } from '../components/upload-zone.js';
 import { setPreview } from '../components/image-preview.js';
@@ -17,7 +17,7 @@ function setStatus(text) {
 async function uploadCurrentFile(file) {
   const form = new FormData();
   form.append('file', file);
-  const response = await apiFetch('/api/images/upload', { method: 'POST', body: form });
+  const response = await apiFetch('/images/upload', { method: 'POST', body: form });
   selectedImageId = response.image_id;
   setStatus(`Uploaded image #${selectedImageId}`);
   return response.image_id;
@@ -32,25 +32,25 @@ async function startEditing() {
   if (!selectedImageId) {
     await uploadCurrentFile(selectedFile);
   }
-  const response = await apiFetch('/api/edit/start', {
+  const response = await apiFetch('/edit/start', {
     method: 'POST',
     body: JSON.stringify({ image_id: selectedImageId, instruction }),
   });
   currentJobId = response.job_id;
   setStatus(`Job #${currentJobId} queued`);
-  pollJob(currentJobId, selectedFile, instruction);
+  pollJob(currentJobId, selectedFile);
 }
 
-async function pollJob(jobId, beforeFile, instruction) {
+async function pollJob(jobId, beforeFile) {
   const beforeUrl = URL.createObjectURL(beforeFile);
   const timer = setInterval(async () => {
     try {
-      const job = await apiFetch(`/api/jobs/${jobId}`);
+      const job = await apiFetch(`/jobs/${jobId}`);
       setProgress($('#progressBar'), job.progress);
       setStatus(`Job #${jobId} is ${job.status} (${job.progress}%)`);
       if (job.status === 'completed') {
         clearInterval(timer);
-        const result = await apiFetch(`/api/jobs/${jobId}/result`);
+        const result = await apiFetch(`/jobs/${jobId}/result`);
         const blob = await result.blob();
         const afterUrl = URL.createObjectURL(blob);
         renderComparison($('#comparison'), beforeUrl, afterUrl);
@@ -81,4 +81,3 @@ window.addEventListener('DOMContentLoaded', () => {
   $('#generateBtn').addEventListener('click', startEditing);
   $('#downloadLink').removeAttribute('href');
 });
-

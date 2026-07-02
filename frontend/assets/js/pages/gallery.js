@@ -1,8 +1,8 @@
-import { apiFetch } from '../utils/api.js';
+﻿import { apiFetch } from '../services/api.js';
 import { $, escapeHtml } from '../utils/dom.js';
 
 async function loadGallery() {
-  const response = await apiFetch('/api/history');
+  const response = await apiFetch('/history');
   const query = $('#search').value.trim().toLowerCase();
   const jobs = response.jobs.filter((job) =>
     !query ||
@@ -25,4 +25,3 @@ window.addEventListener('DOMContentLoaded', () => {
   $('#search').addEventListener('input', loadGallery);
   loadGallery();
 });
-

@@ -1,10 +1,10 @@
-import { apiFetch } from '../utils/api.js';
+﻿import { apiFetch } from '../services/api.js';
 import { $ } from '../utils/dom.js';
 
 async function loadAdmin() {
   const [metrics, history] = await Promise.all([
-    apiFetch('/api/metrics'),
-    apiFetch('/api/history'),
+    apiFetch('/metrics'),
+    apiFetch('/history'),
   ]);
   $('#adminMetrics').innerHTML = `
     <div class="stat"><strong>${metrics.cpu_usage_percent}%</strong><span class="muted">CPU usage</span></div>
@@ -23,4 +23,3 @@ async function loadAdmin() {
 }
 
 window.addEventListener('DOMContentLoaded', loadAdmin);
-

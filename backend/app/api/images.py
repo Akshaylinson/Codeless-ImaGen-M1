@@ -1,7 +1,8 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
+from ..core.config import settings
 from ..core.security import get_current_user
 from ..database.sqlite import db_session
 from ..schemas.images import UploadImageResponse
@@ -10,7 +11,7 @@ from ..utils.file_validation import validate_extension, validate_upload
 from ..utils.image_processing import load_image
 
 
-router = APIRouter(prefix="/api/images", tags=["images"])
+router = APIRouter(prefix=f"{settings.api_prefix}/images", tags=["images"])
 storage_service = StorageService()
 
 
@@ -45,4 +46,3 @@ async def upload_image(
             (str(stored.image_path), image_id),
         )
     return UploadImageResponse(image_id=image_id)
-
